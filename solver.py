@@ -214,32 +214,37 @@ def uniformCostSearch(gameState):
     beginPlayer = PosOfPlayer(gameState)
 
     startState = (beginPlayer, beginBox)
+    # store states
     frontier = PriorityQueue()
     frontier.push([startState], 0)
     exploredSet = set()
+    # store actions
     actions = PriorityQueue()
     actions.push([0], 0)
     temp = []
     ### Implement uniform cost search here
-    while frontier:
+    while not frontier.isEmpty():
+        # Remove node with smallest priority from frontier
         node = frontier.pop()
         node_action = actions.pop()
-
+        
+        # if state end then return solution
         if isEndState(node[-1][-1]):
             temp += node_action[1:]
             break
+        # Add node to explored set
         if node[-1] not in exploredSet:
             exploredSet.add(node[-1])
             for action in legalActions(node[-1][0], node[-1][1]):
+                # Get successor state 
                 newPosPlayer, newPosBox = updateState(node[-1][0], node[-1][1], action)
+                # if successor state in explored set then continue
                 if isFailed(newPosBox):
                     continue
-                # if cost(action[-1]) == 0:
-                frontier.push(node + [(newPosPlayer, newPosBox)], cost(action[-1]))
-                actions.push(node_action +  [action[-1]], cost(action[-1]))
-                # else:
-                #     frontier.push(node + [(newPosPlayer, newPosBox)], node[-1])
-                #     actions.push(node_action +  [action[-1]], node[-1])
+                # Update frontier with successor state and priority plus with a cost function
+                frontier.push(node + [(newPosPlayer, newPosBox)], cost(node_action[1:] + [action[-1]]))
+                actions.push(node_action + [action[-1]], cost(node_action[1:] + [action[-1]]))
+
     return temp
 
 """Read command"""
@@ -277,4 +282,5 @@ def get_move(layout, player_pos, method):
     time_end=time.time()
     print('Runtime of %s: %.2f second.' %(method, time_end-time_start))
     print(result)
+    print('Total steps:', len(result))
     return result
