@@ -4,8 +4,9 @@ import numpy as np
 import heapq
 import time
 import numpy as np
-global posWalls, posGoals
+from collections import Counter
 
+global posWalls, posGoals
 class PriorityQueue:
     """Define a PriorityQueue data structure that will be used"""
     def  __init__(self):
@@ -142,87 +143,47 @@ def isFailed(posBox):
                 elif newBoard[1] in posBox and newBoard[6] in posBox and newBoard[2] in posWalls and newBoard[3] in posWalls and newBoard[8] in posWalls: return True
     return False
 
-"""Implement all approcahes"""
-
-def depthFirstSearch(gameState):
-    """Implement depthFirstSearch approach"""
-    beginBox = PosOfBoxes(gameState)
-    beginPlayer = PosOfPlayer(gameState)
-
-    startState = (beginPlayer, beginBox)
-    frontier = collections.deque([[startState]])
-    exploredSet = set()
-    actions = [[0]] 
-    temp = []
-    while frontier:
-        node = frontier.pop()
-        node_action = actions.pop()
-        if isEndState(node[-1][-1]):
-            temp += node_action[1:]
-            break
-        if node[-1] not in exploredSet:
-            exploredSet.add(node[-1])
-            for action in legalActions(node[-1][0], node[-1][1]):
-                newPosPlayer, newPosBox = updateState(node[-1][0], node[-1][1], action)
-                if isFailed(newPosBox):
-                    continue
-                frontier.append(node + [(newPosPlayer, newPosBox)])
-                actions.append(node_action + [action[-1]])
-    return temp
-
-def breadthFirstSearch(gameState):
-    """Implement breadthFirstSearch approach"""
-    beginBox = PosOfBoxes(gameState)
-    beginPlayer = PosOfPlayer(gameState)
-
-    startState = (beginPlayer, beginBox) # e.g. ((2, 2), ((2, 3), (3, 4), (4, 4), (6, 1), (6, 4), (6, 5)))
-    frontier = collections.deque([[startState]]) # store states
-    actions = collections.deque([[0]]) # store actions
-    exploredSet = set()
-    temp = []
-    ### Implement breadthFirstSearch here
-    while frontier:
-        # Remove node with smallest priority from frontier
-        node = frontier.popleft()
-        node_action = actions.popleft()
-        # if state end then return solution
-        if isEndState(node[-1][-1]):
-            temp += node_action[1:]
-            break
-        # Add node to explored set
-        if node[-1] not in exploredSet:
-            exploredSet.add(node[-1])
-            for action in legalActions(node[-1][0], node[-1][1]):
-                # Get successor state 
-                newPosPlayer, newPosBox = updateState(node[-1][0], node[-1][1], action)
-                # if successor state in explored set then continue
-                if isFailed(newPosBox):
-                    continue
-                # Update frontier and action with successor state and node
-                frontier.append(node + [(newPosPlayer, newPosBox)])
-                actions.append(node_action + [action[-1]])
-
-    return temp
-    
 def cost(actions):
     """A cost function"""
     return len([x for x in actions if x.islower()])
 
+def manhattanDistance(current_node , goal_node, D = 1):
+    """
+    Input:  
+    - current_node: Current position
+    - goal_node: Goal position
+    - D: The minimum cost D for moving from one space to an adjacent space.
+    """
+    dx = abs(current_node[0] - goal_node[0])
+    dy = abs(current_node[-1] - goal_node[-1])
+    return D * (dx + dy)
+
+def diagonalDistance(current_node, goal_node, D = 1, D2 = 1):
+    dx = abs(current_node[0] - goal_node[0])
+    dy = abs(current_node[-1] - goal_node[-1])
+    return D * (dx + dy) + (D2 - 2 * D) * min(dx, dy)
+
+def euclideanDistance(current_node, goal_node):
+    dx = abs(current_node[0] - goal_node[0])
+    dy = abs(current_node[-1] - goal_node[-1])
+    return round((dx * dx + dy * dy)**0.5)
+
 def uniformCostSearch(gameState):
-    """Implement uniformCostSearch approach"""
+        # Initialize start position of box and player
     beginBox = PosOfBoxes(gameState)
     beginPlayer = PosOfPlayer(gameState)
 
     startState = (beginPlayer, beginBox)
-    # store states
+    # Initialize the frontier to the root node
     frontier = PriorityQueue()
     frontier.push([startState], 0)
+    # Initialize the visited (explored) to the empty set 
     exploredSet = set()
-    # store actions
+    # Store actions
     actions = PriorityQueue()
     actions.push([0], 0)
     temp = []
-    ### Implement uniform cost search here
+    # while the frontier is not empty
     while not frontier.isEmpty():
         # Remove node with smallest priority from frontier
         node = frontier.pop()
@@ -241,9 +202,99 @@ def uniformCostSearch(gameState):
                 # if successor state in explored set then continue
                 if isFailed(newPosBox):
                     continue
-                # Update frontier with successor state and priority plus with a cost function
+                # Update frontier with successor state and priority plus with a heuristic function
                 frontier.push(node + [(newPosPlayer, newPosBox)], cost(node_action[1:] + [action[-1]]))
                 actions.push(node_action + [action[-1]], cost(node_action[1:] + [action[-1]]))
+
+    return temp
+
+def greedySearch(gameState, heuristic=manhattanDistance):
+    # Initialize start position of box and player
+    beginBox = PosOfBoxes(gameState)
+    beginPlayer = PosOfPlayer(gameState)
+
+    startState = (beginPlayer, beginBox)
+    # Initialize the frontier to the root node
+    frontier = PriorityQueue()
+    frontier.push([startState], 0)
+    # Initialize the visited (explored) to the empty set 
+    exploredSet = set()
+    # Store actions
+    actions = PriorityQueue()
+    actions.push([0], 0)
+    temp = []
+    # while the frontier is not empty
+    while not frontier.isEmpty():
+        # Remove node with smallest priority from frontier
+        node = frontier.pop()
+        node_action = actions.pop()
+        
+        # if state end then return solution
+        if isEndState(node[-1][-1]):
+            temp += node_action[1:]
+            break
+        # Add node to explored set
+        if node[-1] not in exploredSet:
+            exploredSet.add(node[-1])
+            for action in legalActions(node[-1][0], node[-1][1]):
+                # Get successor state 
+                newPosPlayer, newPosBox = updateState(node[-1][0], node[-1][1], action)
+                # if successor state in explored set then continue
+                if isFailed(newPosBox):
+                    continue
+                
+                # A heuristic function that estimates the cost of the cheapest path from next node on the path to the goal
+                h_n = sum([heuristic(node[-1][-1][i], posGoals[i]) for i in range(len(posGoals))])  
+                # Update frontier with successor state and priority plus with a heuristic function
+                frontier.push(node + [(newPosPlayer, newPosBox)], h_n)
+                actions.push(node_action + [action[-1]], h_n)
+
+    return temp
+
+def aStarSearch(gameState, heuristic=manhattanDistance):
+    # Initialize start position of box and player
+    beginBox = PosOfBoxes(gameState)
+    beginPlayer = PosOfPlayer(gameState)
+
+    startState = (beginPlayer, beginBox)
+    # Initialize the frontier to the root node
+    frontier = PriorityQueue()
+    frontier.push([startState], 0)
+    # Initialize the visited (explored) to the empty set 
+    exploredSet = set()
+    # Store actions
+    actions = PriorityQueue()
+    actions.push([0], 0)
+    temp = []
+    # while the frontier is not empty
+    while not frontier.isEmpty():
+        # Remove node with smallest priority from frontier
+        node = frontier.pop()
+        node_action = actions.pop()
+        
+        # if state end then return solution
+        if isEndState(node[-1][-1]):
+            temp += node_action[1:]
+            break
+        # Add node to explored set
+        if node[-1] not in exploredSet:
+            exploredSet.add(node[-1])
+            for action in legalActions(node[-1][0], node[-1][1]):
+                # Get successor state 
+                newPosPlayer, newPosBox = updateState(node[-1][0], node[-1][1], action)
+                # if successor state in explored set then continue
+                if isFailed(newPosBox):
+                    continue
+                
+                # A heuristic function that estimates the cost of the cheapest path from next node on the path to the goal
+                h_n = sum([heuristic(node[-1][-1][i], posGoals[i]) for i in range(len(posGoals))])  
+                # The cost of the path from the start node to next node on the path
+                g_n = cost(node_action[1:] + [action[-1]])
+                # Sum of heuristic function and cost function
+                f_n = h_n + g_n
+                # Update frontier with successor state and priority plus with a f_n function
+                frontier.push(node + [(newPosPlayer, newPosBox)], f_n)
+                actions.push(node_action + [action[-1]], f_n)
 
     return temp
 
@@ -264,23 +315,26 @@ def readCommand(argv):
     args['method'] = options.agentMethod
     return args
 
-def get_move(layout, player_pos, method):
+def get_move(layout, player_pos, method, heuristic_method=None):
     time_start = time.time()
     global posWalls, posGoals
     # layout, method = readCommand(sys.argv[1:]).values()
     gameState = transferToGameState2(layout, player_pos)
+        
     posWalls = PosOfWalls(gameState)
     posGoals = PosOfGoals(gameState)
-    if method == 'dfs':
-        result = depthFirstSearch(gameState)
-    elif method == 'bfs':
-        result = breadthFirstSearch(gameState)    
-    elif method == 'ucs':
+
+    if method == 'greedy':
+        result = greedySearch(gameState, heuristic=heuristic_method)
+    elif method == 'astar':
+        result = aStarSearch(gameState, heuristic=heuristic_method)
+    elif method == 'ucs': 
         result = uniformCostSearch(gameState)
     else:
         raise ValueError('Invalid method.')
+
     time_end=time.time()
     print('Runtime of %s: %.2f second.' %(method, time_end-time_start))
     print(result)
-    print('Total steps:', len(result))
+
     return result
